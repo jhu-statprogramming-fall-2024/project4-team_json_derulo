@@ -6,6 +6,7 @@ library(googleway)
 library(httr)
 library(jsonlite)
 library(purrr)
+
 library(R6)
 
 # Clinic creation function
@@ -97,7 +98,7 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  api_key <- "AIzaSyAroe4t66fE9A12l0zlGnum630beJOZev0"  # Replace with your actual API key
+  api_key <- ""  # Replace with the actual API key
   location <- reactiveVal(NULL)
   
   observeEvent(input$find, {
