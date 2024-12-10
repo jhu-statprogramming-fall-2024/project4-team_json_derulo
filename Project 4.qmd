@@ -14,8 +14,7 @@ library(DT)
 ```
 
 ```{r}
-
-# Clinic creation function
+# Object Oriented Programming - Creating a "clinic" object
 create_clinic <- function(name, address, zip, open_hours = NULL, max_GAw, max_GAd = NULL, phone, lat, long, website = NULL) {
   structure(
     list(
@@ -55,8 +54,7 @@ clinics <- list(
   create_clinic("Whole Woman's Health of Charlottesville", "2321 Commonwealth Dr", 22901, "M-F 0800 - 1700", 18, 0, "434-973-4888", 38.07390158589749, -78.48611373072481,"https://wholewomanshealth.com/abortion-clinics/charlottesville-va/")
 )
 
-
-# R6 Class for Location
+# R6 Class for User Location
 Location <- R6Class("Location",
                     public = list(
                       address = NULL,
@@ -88,7 +86,7 @@ Location <- R6Class("Location",
                     )
 )
 
-# Modify the UI to replace the verbatimTextOutput
+# Modify the UI
 ui <- fluidPage(
   titlePanel("Find Nearest Clinic"),
   sidebarLayout(
@@ -103,7 +101,7 @@ ui <- fluidPage(
     ),
     mainPanel(
       google_mapOutput(outputId = "map"),
-      DTOutput("clinicTable")  # Replace verbatimTextOutput with DTOutput
+      DTOutput("clinicTable") 
     )
   )
 )
@@ -121,20 +119,20 @@ server <- function(input, output, session) {
       loc$fetch_coordinates()
       location(loc)
       
-      # Set max gestational age, use Inf if not specified
+      # Set max gestational age
       max_gaw <- ifelse(is.na(input$max_gaw), Inf, as.numeric(input$max_gaw))
       
       # Filter clinics based on gestational age
-      filtered_clinics <- clinics[sapply(clinics, function(clinic) clinic$max_GAw >= max_gaw)]
+      filtered_clinics <- keep(clinics, ~ .x$max_GAw >= max_gaw)
       
       # Calculate distances
-      distances <- sapply(filtered_clinics, function(clinic) {
-        distm(
-          c(loc$lng, loc$lat), 
-          c(clinic$long, clinic$lat), 
-          fun = distHaversine
-        ) / 1609.344  # Convert to miles
-      })
+      distances <- map_dbl(filtered_clinics, ~ {
+  distm(
+    c(loc$lng, loc$lat), 
+    c(.x$long, .x$lat), 
+    fun = distHaversine
+  ) / 1609.344  # Convert to miles
+})
       
       # Sort clinics by distance
       sorted_indices <- order(distances)
@@ -142,28 +140,27 @@ server <- function(input, output, session) {
       sorted_distances <- distances[sorted_indices]
       
       # Prepare data for the table
-      clinic_data <- data.frame(
-        Name = unlist(lapply(sorted_clinics, function(clinic) {
-          # Create a hyperlink if website exists, otherwise just the name
-          if (!is.null(clinic$website) && clinic$website != "") {
-            paste0('<a href="', clinic$website, '" target="_blank">', clinic$name, '</a>')
-          } else {
-            clinic$name
-          }
-        })),
-        Address = unlist(lapply(sorted_clinics, `[[`, "address")),
-        Distance = round(sorted_distances, 1),
-        Phone = unlist(lapply(sorted_clinics, `[[`, "phone")),
-        MaxGA = unlist(lapply(sorted_clinics, `[[`, "max_GAw")),
-        stringsAsFactors = FALSE
+    clinic_data <- data.frame(
+  Name = map_chr(sorted_clinics, ~ {
+    if (!is.null(.x$website) && .x$website != "") {
+      paste0('<a href="', .x$website, '" target="_blank">', .x$name, '</a>')
+    } else {
+      .x$name
+    }
+  }),
+  Address = map_chr(sorted_clinics, "address"),
+  Distance = map_chr(sorted_distances, ~ as.character(round(.x, 1))),
+  Phone = map_chr(sorted_clinics, "phone"),
+  MaxGA = map_chr(sorted_clinics, ~ as.character(.x$max_GAw)),
+  stringsAsFactors = FALSE
       )
       
-      # Prepare map data with both clinics and user location
+     # Prepare map data with both clinics and user location
       map_data <- rbind(
         data.frame(
-          Latitude = unlist(lapply(sorted_clinics, `[[`, "lat")),
-          Longitude = unlist(lapply(sorted_clinics, `[[`, "long")),
-          Name = unlist(lapply(sorted_clinics, `[[`, "name")),
+            Latitude = map_dbl(sorted_clinics, ~ .x[["lat"]]),
+            Longitude = map_dbl(sorted_clinics, ~ .x[["long"]]),
+            Name = map_chr(sorted_clinics, ~ .x[["name"]]),
           colour = "red",
           stringsAsFactors = FALSE
         ),
@@ -191,11 +188,11 @@ server <- function(input, output, session) {
       output$clinicTable <- renderDT({
         datatable(
           clinic_data, 
-          escape = FALSE,  # Allow HTML in Name column
+          escape = FALSE, 
           options = list(
-            pageLength = 5,  # Show 5 entries per page
-            lengthMenu = c(5, 10, 15),  # Options for number of entries
-            searching = FALSE,  # Disable search
+            pageLength = 5,  
+            lengthMenu = c(5, 10, 15),  
+            searching = FALSE, 
             columnDefs = list(
               list(
                 targets = '_all',
