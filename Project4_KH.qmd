@@ -31,7 +31,7 @@ decode_pl <- function(encoded) {
   return(decoded)
 }
 
-# Function to fetch route details - MOVED UP before server function
+# Function to fetch route details
 fetch_route_details <- function(origin_lat, origin_lng, dest_lat, dest_lng, api_key) {
   route_modes <- c("driving", "walking", "transit")
   route_results <- lapply(route_modes, function(mode) {
@@ -86,38 +86,6 @@ create_clinic <- function(name, address, zip, open_hours = NULL, max_GAw, max_GA
   )
 }
 
-# Location R6 Class
-Location <- R6Class("Location",
-  public = list(
-    address = NULL,
-    lat = NULL,
-    lng = NULL,
-    api_key = NULL,
-    
-    initialize = function(address, api_key) {
-      self$address <- address
-      self$api_key <- api_key
-    },
-    
-    fetch_coordinates = function() {
-      geocode_url <- paste0(
-        "https://maps.googleapis.com/maps/api/geocode/json?address=",
-        URLencode(self$address),
-        "&key=", self$api_key
-      )
-      response <- httr::GET(geocode_url)
-      geocode_data <- jsonlite::fromJSON(httr::content(response, "text", encoding = "UTF-8"))
-      
-      if (geocode_data$status == "OK" && length(geocode_data$results) > 0) {
-        self$lat <- geocode_data$results$geometry$location$lat
-        self$lng <- geocode_data$results$geometry$location$lng
-      } else {
-        stop("Invalid Address or API Error")
-      }
-    }
-  )
-)
-
 # Clinics data
 clinics <- list(
   create_clinic("DuPont Clinic", "1120 19th St NW", 20036, "M-F 0900 - 1700, Sa 1000 - 1400", 32, 6, "202-844-2004", 38.90478876534545, -77.04373883435558, "https://dupontclinic.com"),
@@ -169,7 +137,7 @@ Location <- R6Class("Location",
     }
   )
 )
-# UI remains the same
+# UI
 ui <- fluidPage(
   useShinyjs(),
   tags$head(
@@ -182,6 +150,7 @@ ui <- fluidPage(
         padding: 10px;
         border: 1px solid #ccc;
         z-index: 1000;
+        display: none;
       }
     "))
   ),
@@ -194,8 +163,7 @@ ui <- fluidPage(
       textInput("state", "State", ""),
       numericInput("zip", "Zip Code", value = NA, min = 10000, max = 99999),
       numericInput("max_gaw", "Gestational Age (weeks):", value = NA, min = 0, max = 48),
-      actionButton("find", "Find Distance to Clinics"),
-      actionButton("toggleLegend", "Toggle Legend")
+      actionButton("find", "Find Distance to Clinics")
     ),
     mainPanel(
       tags$div(
@@ -216,8 +184,10 @@ ui <- fluidPage(
 
 # Server
 server <- function(input, output, session) {
+  # Initialize API key
   api_key <- Sys.getenv("GOOGLE_API")
   
+  # Initialize reactive values
   rv <- reactiveValues(
     clinics = NULL,
     route_results = NULL,
@@ -226,139 +196,44 @@ server <- function(input, output, session) {
     user_location = NULL
   )
   
-  # Initialize map
+  # Initialize empty map
   output$map <- renderGoogle_map({
     google_map(key = api_key)
   })
   
-  # Toggle legend
-  observeEvent(input$toggleLegend, {
-    toggle("legend")
-  })
-  
-  # Function to clear and update map
-  update_map_display <- function(map_data, route_results = NULL) {
-    # Clear the map and start fresh
-    google_map_update(map_id = "map") %>%
-      clear_markers() %>%
-      clear_polylines()
-    
-    # Add markers back
-    google_map_update(map_id = "map") %>%
-      add_markers(
-        data = map_data,
-        lat = "Latitude", 
-        lon = "Longitude",
-        colour = "colour",
-        title = "Name",
-        info_window = "Name",
-        id = "Name"
-      )
-    
-    # Add new routes if available
-    if (!is.null(route_results)) {
-      if (!is.null(route_results$driving)) {
-        coords <- decode_pl(route_results$driving$polyline)
-        google_map_update(map_id = "map") %>%
-          add_polylines(
-            data = coords,
-            lat = "lat",
-            lon = "lon",
-            stroke_colour = "#FF0000",
-            stroke_weight = 3
-          )
-      }
-      
-      if (!is.null(route_results$walking)) {
-        coords <- decode_pl(route_results$walking$polyline)
-        google_map_update(map_id = "map") %>%
-          add_polylines(
-            data = coords,
-            lat = "lat",
-            lon = "lon",
-            stroke_colour = "#00FF00",
-            stroke_weight = 3
-          )
-      }
-      
-      if (!is.null(route_results$transit)) {
-        coords <- decode_pl(route_results$transit$polyline)
-        google_map_update(map_id = "map") %>%
-          add_polylines(
-            data = coords,
-            lat = "lat",
-            lon = "lon",
-            stroke_colour = "#0000FF",
-            stroke_weight = 3
-          )
-      }
-    }
+  # Function to update route details text
+  update_route_details <- function(clinic_name, route_results) {
+    output$routeDetailsText <- renderUI({
+      HTML(paste(
+        "<h5>Routes to", clinic_name, "</h5>",
+        "<h6>Driving Route:</h6>",
+        ifelse(!is.null(route_results$driving),
+               paste("Distance:", route_results$driving$distance,
+                     "<br>Duration:", route_results$driving$duration),
+               "No driving route available"),
+        "<h6>Walking Route:</h6>",
+        ifelse(!is.null(route_results$walking),
+               paste("Distance:", route_results$walking$distance,
+                     "<br>Duration:", route_results$walking$duration),
+               "No walking route available"),
+        "<h6>Transit Route:</h6>",
+        ifelse(!is.null(route_results$transit),
+               paste("Distance:", route_results$transit$distance,
+                     "<br>Duration:", route_results$transit$duration),
+               "No transit route available")
+      ))
+    })
   }
   
-  # Handle marker clicks
-  observeEvent(input$google_map_marker_click, {
-    click <- input$google_map_marker_click
-    req(rv$clinics, rv$user_location, click)
-    
-    # Skip if user location marker is clicked
-    if (click$id == "Your Location") return()
-    
-    # Find the clicked clinic
-    clicked_clinic <- Find(function(clinic) {
-      clinic$name == click$id
-    }, rv$clinics)
-    
-    if (!is.null(clicked_clinic)) {
-      # Update selected clinic
-      rv$selected_clinic <- clicked_clinic
-      
-      # Fetch new route details
-      rv$route_results <- fetch_route_details(
-        rv$user_location$lat,
-        rv$user_location$lng,
-        clicked_clinic$lat,
-        clicked_clinic$long,
-        api_key
-      )
-      
-      # Update map display
-      update_map_display(rv$initial_map_data, rv$route_results)
-      
-      # Update route details text
-      output$routeDetailsText <- renderUI({
-        HTML(paste(
-          "<h5>Routes to", clicked_clinic$name, "</h5>",
-          "<h6>Driving Route:</h6>",
-          ifelse(!is.null(rv$route_results$driving),
-                 paste("Distance:", rv$route_results$driving$distance,
-                       "<br>Duration:", rv$route_results$driving$duration),
-                 "No driving route available"),
-          "<h6>Walking Route:</h6>",
-          ifelse(!is.null(rv$route_results$walking),
-                 paste("Distance:", rv$route_results$walking$distance,
-                       "<br>Duration:", rv$route_results$walking$duration),
-                 "No walking route available"),
-          "<h6>Transit Route:</h6>",
-          ifelse(!is.null(rv$route_results$transit),
-                 paste("Distance:", rv$route_results$transit$distance,
-                       "<br>Duration:", rv$route_results$transit$duration),
-                 "No transit route available")
-        ))
-      })
-      
-      # Update table selection
-      clinic_index <- match(clicked_clinic$name, map_chr(rv$clinics, "name"))
-      if (!is.na(clinic_index)) {
-        dataTableProxy("clinicTable") %>% selectRows(clinic_index)
-      }
-    }
-  })
-  
-  # Handle find button click
+  # Handle Find button click
   observeEvent(input$find, {
     req(input$address)
     
     tryCatch({
+      # Show the legend and instructions
+      shinyjs::show("legend")
+      shinyjs::show("instructions")
+      
       # Create location
       loc <- Location$new(
         paste(input$address, input$city, input$state, input$zip, sep = ", "), 
@@ -403,6 +278,14 @@ server <- function(input, output, session) {
         Distance = map_chr(sorted_distances, ~ as.character(round(.x, 1))),
         Phone = map_chr(sorted_clinics, "phone"),
         MaxGA = map_chr(sorted_clinics, ~ as.character(.x$max_GAw)),
+        Directions = paste0(
+          '<a href="#" onclick="Shiny.setInputValue(\'select_clinic\', \'',
+          map_chr(sorted_clinics, function(clinic) {
+            # Use exact same name as stored in clinic object
+            clinic$name
+          }), 
+          '\'); return false;">Click for directions</a>'
+        ),
         stringsAsFactors = FALSE
       )
       
@@ -424,7 +307,7 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
       
-      # Initial map display
+      # Draw initial map with markers
       output$map <- renderGoogle_map({
         google_map(key = api_key) %>%
           add_markers(
@@ -446,6 +329,115 @@ server <- function(input, output, session) {
     })
   })
   
+  # Handle marker clicks
+  observeEvent(input$google_map_marker_click, {
+    click <- input$google_map_marker_click
+    print(paste("Clicked marker:", click$id))  # Debug print
+    req(rv$clinics, rv$user_location, click)
+    
+    # Skip if user location marker is clicked
+    if (click$id == "Your Location") return()
+    
+    # Find the clicked clinic
+    clicked_clinic <- Find(function(clinic) {
+      clean_clinic_name <- gsub("[^[:alnum:]]", "", tolower(clinic$name))
+      clean_click_id <- gsub("[^[:alnum:]]", "", tolower(click$id))
+      clean_clinic_name == clean_click_id
+    }, rv$clinics)
+    
+    if (!is.null(clicked_clinic)) {
+      print(paste("Found clinic:", clicked_clinic$name))  # Debug print
+      # Update selected clinic
+      rv$selected_clinic <- clicked_clinic
+      
+      # Fetch new route details
+      rv$route_results <- fetch_route_details(
+        rv$user_location$lat,
+        rv$user_location$lng,
+        clicked_clinic$lat,
+        clicked_clinic$long,
+        api_key
+      )
+      
+      # Clear existing map and add markers
+      google_map_update(map_id = "map") %>%
+        clear_markers() %>%
+        clear_polylines()
+      
+      google_map_update(map_id = "map") %>%
+        add_markers(
+          data = rv$initial_map_data,
+          lat = "Latitude", 
+          lon = "Longitude",
+          colour = "colour",
+          title = "Name",
+          info_window = "Name",
+          id = "Name"
+        )
+      
+      # Add routes with error checking
+      tryCatch({
+        if (!is.null(rv$route_results$driving)) {
+          coords <- decode_pl(rv$route_results$driving$polyline)
+          if (nrow(coords) > 0) {
+            google_map_update(map_id = "map") %>%
+              add_polylines(
+                data = coords,
+                lat = "lat",
+                lon = "lon",
+                stroke_colour = "#FF0000",
+                stroke_weight = 3
+              )
+          }
+        }
+        
+        if (!is.null(rv$route_results$walking)) {
+          coords <- decode_pl(rv$route_results$walking$polyline)
+          if (nrow(coords) > 0) {
+            google_map_update(map_id = "map") %>%
+              add_polylines(
+                data = coords,
+                lat = "lat",
+                lon = "lon",
+                stroke_colour = "#00FF00",
+                stroke_weight = 3
+              )
+          }
+        }
+        
+        if (!is.null(rv$route_results$transit)) {
+          coords <- decode_pl(rv$route_results$transit$polyline)
+          if (nrow(coords) > 0) {
+            google_map_update(map_id = "map") %>%
+              add_polylines(
+                data = coords,
+                lat = "lat",
+                lon = "lon",
+                stroke_colour = "#0000FF",
+                stroke_weight = 3
+              )
+          }
+        }
+      }, error = function(e) {
+        print(paste("Error drawing routes:", e$message))
+      })
+      
+      # Update route details
+      update_route_details(clicked_clinic$name, rv$route_results)
+      
+      # Update table selection
+      clinic_index <- match(clicked_clinic$name, map_chr(rv$clinics, "name"))
+      if (!is.na(clinic_index)) {
+        dataTableProxy("clinicTable") %>% selectRows(clinic_index)
+      }
+      
+      # Hide instructions
+      shinyjs::hide("instructions")
+    } else {
+      print("No matching clinic found")  # Debug print
+    }
+  })
+  
   # Handle table row selection
   observeEvent(input$clinicTable_rows_selected, {
     req(rv$clinics, rv$user_location)
@@ -453,6 +445,7 @@ server <- function(input, output, session) {
     selected_clinic <- rv$clinics[[input$clinicTable_rows_selected]]
     rv$selected_clinic <- selected_clinic
     
+    # Fetch new route details
     rv$route_results <- fetch_route_details(
       rv$user_location$lat,
       rv$user_location$lng,
@@ -461,28 +454,180 @@ server <- function(input, output, session) {
       api_key
     )
     
-    update_map_display(rv$initial_map_data, rv$route_results)
+    # Clear existing map and add markers
+    google_map_update(map_id = "map") %>%
+      clear_markers() %>%
+      clear_polylines()
     
-    output$routeDetailsText <- renderUI({
-      HTML(paste(
-        "<h5>Routes to", selected_clinic$name, "</h5>",
-        "<h6>Driving Route:</h6>",
-        ifelse(!is.null(rv$route_results$driving),
-               paste("Distance:", rv$route_results$driving$distance,
-                     "<br>Duration:", rv$route_results$driving$duration),
-               "No driving route available"),
-        "<h6>Walking Route:</h6>",
-        ifelse(!is.null(rv$route_results$walking),
-               paste("Distance:", rv$route_results$walking$distance,
-                     "<br>Duration:", rv$route_results$walking$duration),
-               "No walking route available"),
-        "<h6>Transit Route:</h6>",
-        ifelse(!is.null(rv$route_results$transit),
-               paste("Distance:", rv$route_results$transit$distance,
-                     "<br>Duration:", rv$route_results$transit$duration),
-               "No transit route available")
-      ))
+    google_map_update(map_id = "map") %>%
+      add_markers(
+        data = rv$initial_map_data,
+        lat = "Latitude", 
+        lon = "Longitude",
+        colour = "colour",
+        title = "Name",
+        info_window = "Name",
+        id = "Name"
+      )
+    
+    # Add routes with error checking
+    tryCatch({
+      if (!is.null(rv$route_results$driving)) {
+        coords <- decode_pl(rv$route_results$driving$polyline)
+        if (nrow(coords) > 0) {
+          google_map_update(map_id = "map") %>%
+            add_polylines(
+              data = coords,
+              lat = "lat",
+              lon = "lon",
+              stroke_colour = "#FF0000",
+              stroke_weight = 3
+            )
+        }
+      }
+      
+      if (!is.null(rv$route_results$walking)) {
+        coords <- decode_pl(rv$route_results$walking$polyline)
+        if (nrow(coords) > 0) {
+          google_map_update(map_id = "map") %>%
+            add_polylines(
+              data = coords,
+              lat = "lat",
+              lon = "lon",
+              stroke_colour = "#00FF00",
+              stroke_weight = 3
+            )
+        }
+      }
+      
+      if (!is.null(rv$route_results$transit)) {
+        coords <- decode_pl(rv$route_results$transit$polyline)
+        if (nrow(coords) > 0) {
+          google_map_update(map_id = "map") %>%
+            add_polylines(
+              data = coords,
+              lat = "lat",
+              lon = "lon",
+              stroke_colour = "#0000FF",
+              stroke_weight = 3
+            )
+        }
+      }
+    }, error = function(e) {
+      print(paste("Error drawing routes:", e$message))
     })
+    
+    # Update route details
+    update_route_details(selected_clinic$name, rv$route_results)
+    
+    # Hide instructions
+    shinyjs::hide("instructions")
+  })
+  
+  # Handle directions link clicks
+  observeEvent(input$select_clinic, {
+    req(rv$clinics, rv$user_location)
+    print(paste("Direction click for:", input$select_clinic))  # Debug print
+    
+    # Find the selected clinic with more flexible matching
+    selected_clinic <- Find(function(clinic) {
+      clean_clinic_name <- gsub("[^[:alnum:]]", "", tolower(clinic$name))
+      clean_selected_name <- gsub("[^[:alnum:]]", "", tolower(input$select_clinic))
+      print(paste("Comparing:", clean_clinic_name, "with:", clean_selected_name))  # Debug print
+      clean_clinic_name == clean_selected_name
+    }, rv$clinics)
+    
+    if (!is.null(selected_clinic)) {
+      print(paste("Found clinic:", selected_clinic$name))  # Debug print
+      # Update selected clinic
+      rv$selected_clinic <- selected_clinic
+      
+      # Fetch new route details
+      rv$route_results <- fetch_route_details(
+        rv$user_location$lat,
+        rv$user_location$lng,
+        selected_clinic$lat,
+        selected_clinic$long,
+        api_key
+      )
+      
+      # Clear existing map and add markers
+      google_map_update(map_id = "map") %>%
+        clear_markers() %>%
+        clear_polylines()
+      
+      google_map_update(map_id = "map") %>%
+        add_markers(
+          data = rv$initial_map_data,
+          lat = "Latitude", 
+          lon = "Longitude",
+          colour = "colour",
+          title = "Name",
+          info_window = "Name",
+          id = "Name"
+        )
+      
+      # Add routes with error checking
+      tryCatch({
+        if (!is.null(rv$route_results$driving)) {
+          coords <- decode_pl(rv$route_results$driving$polyline)
+          if (nrow(coords) > 0) {
+            google_map_update(map_id = "map") %>%
+              add_polylines(
+                data = coords,
+                lat = "lat",
+                lon = "lon",
+                stroke_colour = "#FF0000",
+                stroke_weight = 3
+              )
+          }
+        }
+        
+        if (!is.null(rv$route_results$walking)) {
+          coords <- decode_pl(rv$route_results$walking$polyline)
+          if (nrow(coords) > 0) {
+            google_map_update(map_id = "map") %>%
+              add_polylines(
+                data = coords,
+                lat = "lat",
+                lon = "lon",
+                stroke_colour = "#00FF00",
+                stroke_weight = 3
+              )
+          }
+        }
+        
+        if (!is.null(rv$route_results$transit)) {
+          coords <- decode_pl(rv$route_results$transit$polyline)
+          if (nrow(coords) > 0) {
+            google_map_update(map_id = "map") %>%
+              add_polylines(
+                data = coords,
+                lat = "lat",
+                lon = "lon",
+                stroke_colour = "#0000FF",
+                stroke_weight = 3
+              )
+          }
+        }
+      }, error = function(e) {
+        print(paste("Error drawing routes:", e$message))
+      })
+      
+      # Update route details
+      update_route_details(selected_clinic$name, rv$route_results)
+      
+      # Update table selection
+    clinic_index <- match(selected_clinic$name, map_chr(rv$clinics, "name"))
+      if (!is.na(clinic_index)) {
+        dataTableProxy("clinicTable") %>% selectRows(clinic_index)
+      }
+      
+      # Hide instructions
+      shinyjs::hide("instructions")
+    } else {
+      print("No matching clinic found for directions click")  # Debug print
+    }
   })
 }
 
