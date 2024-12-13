@@ -141,8 +141,8 @@ server <- function(input, output, session) {
       
       # Prepare data for the table
     clinic_data <- data.frame(
-  Name = map_chr(sorted_clinics, ~ {
-    if (!is.null(.x$website) && .x$website != "") {
+      Name = map_chr(sorted_clinics, ~ {
+      if (!is.null(.x$website) && .x$website != "") {
       paste0('<a href="', .x$website, '" target="_blank">', .x$name, '</a>')
     } else {
       .x$name
