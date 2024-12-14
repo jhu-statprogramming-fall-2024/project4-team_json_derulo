@@ -106,6 +106,48 @@ clinics <- list(
   create_clinic("Whole Woman's Health of Charlottesville", "2321 Commonwealth Dr", 22901, "M-F 0800 - 1700", 18, 0, "434-973-4888", 38.07390158589749, -78.48611373072481,"https://wholewomanshealth.com/abortion-clinics/charlottesville-va/")
 )
 
+# Create state law class
+create_state_law_info <- function(state) {
+  state_laws <- list(
+    "Virginia" = list(
+      gestational_limit = "26 weeks, 6 days from the first day of your last menstrual period.",
+      exceptions = "After 26 weeks: to save the pregnant person's life, to preserve the pregnant person's general health (can include mental health).",
+      parental_consent = "YES; must be notified of decision 24 hours prior to abortion.",
+      waiting_period_or_counseling = "NO"
+    ),
+    "Maryland" = list(
+      gestational_limit = "Legal throughout pregnancy.",
+      parental_consent = "NO; however, parent or guardian must be notified before a minor has an abortion, exceptions allowed.",
+      waiting_period_or_counseling = "NO"
+    ),
+    "North Carolina" = list(
+      gestational_limit = "12 weeks from the first day of your last menstrual period.",
+      exceptions = "After 12 weeks: In case of rape or incest allowed through week 20, life-limiting fetal anomaly allowed through week 24, if your life is in danger or there is a severe health risk allowed at any point.",
+      parental_consent = "YES",
+      waiting_period_or_counseling = "YES; in-person counseling at least three days prior to abortion procedure and follow-up appointment for medication abortion patients 1-2 weeks after the abortion."
+    ),
+    "West Virginia" = list(
+      text = "Abortion is illegal; you may be able to get an abortion in other states."
+    ),
+    "Washington DC" = list(
+      gestational_limit = "Legal throughout pregnancy.",
+      parental_consent = "NO",
+      waiting_period_or_counseling = "NO"
+    )
+  )
+  
+  # If a specific state is provided, return its information
+  if (state %in% names(state_laws)) {
+    return(state_laws[[state]])
+  } else {
+    # If the state is not found, return a helpful message
+    return(paste("No information available for", state))
+  }
+}
+  
+  
+
+
 # Location R6 Class
 Location <- R6Class("Location",
   public = list(
@@ -172,6 +214,7 @@ ui <- fluidPage(
         tags$div(style = "display: inline-block; width: 20px; height: 10px; background-color: #00FF00; margin-right: 5px;"), "Walking", tags$br(),
         tags$div(style = "display: inline-block; width: 20px; height: 10px; background-color: #0000FF; margin-right: 5px;"), "Transit"
       ),
+      textAreaOutput("stateLawInfo"),
       google_mapOutput(outputId = "map"),
       DTOutput("clinicTable"),
       div(id = "route-details",
@@ -228,6 +271,14 @@ server <- function(input, output, session) {
   # Handle Find button click
   observeEvent(input$find, {
     req(input$address)
+    
+    # Get state law info
+    state_law_data <- create_state_law_info(input$state)
+    
+    # Display the state law info
+    output$stateLawInfo <- renderText({
+      paste(unlist(state_law_data), collapse = "\n")
+    })
     
     tryCatch({
       # Show the legend and instructions
