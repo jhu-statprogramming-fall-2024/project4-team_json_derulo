@@ -111,26 +111,29 @@ create_state_law_info <- function(state) {
   state_laws <- list(
     "Virginia" = list(
       gestational_limit = "Gestational Limit: 26 weeks, 6 days from the first day of your last menstrual period.\n",
-      exceptions = "Exceptions: After 26 weeks, to save the pregnant person's life, to preserve the pregnant person's general health (can include mental health).\n",
-      parental_consent = "Parental Consent Required: YES; must be notified of decision 24 hours prior to abortion.\n",
-      waiting_period_or_counseling = "Waiting Period or Counseling Required: NO"
+      exceptions = "Exceptions: After 26 weeks, abortion is permitted to save the pregnant person's life and to preserve the pregnant person's general health (can include mental health).\n",
+      parental_consent = "Parental Consent Required for Minors: YES; parents must be notified of decision 24 hours prior to abortion.\n",
+      waiting_period_or_counseling = "Waiting Period or Counseling Required: NO",
+      source = "Source: https://www.plannedparenthood.org/planned-parenthood-virginia-league/abortion-services/ab-faq "
     ),
     "Maryland" = list(
-      gestational_limit = "Gestational Limit: Legal throughout pregnancy.\n",
-      parental_consent = "Parental Consent Required: NO; however, parent or guardian must be notified before a minor has an abortion, exceptions allowed.\n",
-      waiting_period_or_counseling = "Waiting Period or Counseling Required: NO"
+      gestational_limit = "Gestational Limit: Abortion legal throughout pregnancy.\n",
+      parental_consent = "Parental Consent Required for Minors: NO; however, parent or guardian must be notified before a minor has an abortion, exceptions allowed.\n",
+      waiting_period_or_counseling = "Waiting Period or Counseling Required: NO",
+      source = "Source: https://www.plannedparenthood.org/planned-parenthood-maryland/client-resources/maryland-minor-laws"
     ),
     "North Carolina" = list(
-      gestational_limit = "Gestational Limit: 12 weeks from the first day of your last menstrual period.\n",
-      exceptions = "Exceptions: After 12 weeks, in case of rape or incest abortion allowed through week 20, life-limiting fetal anomaly abortion allowed through week 24, if the patient's life is in danger or there is a severe health risk, abortion allowed at any point.\n",
+      gestational_limit = "Gestational Limit: 12 weeks from the first day of last menstrual period.\n",
+      exceptions = "Exceptions: Abortion allowed after through week 20 in cases of rape or incest. Abortion for life-limiting fetal anomaly  allowed through week 24. If the patient's life is in danger or there is a severe health risk, abortion allowed at any point.\n",
       parental_consent = "Parental Consent Required for Minors: YES\n",
-      waiting_period_or_counseling = "Waiting Period or Counseling: YES; in-person counseling at least three days prior to abortion procedure and follow-up appointment for medication abortion patients 1-2 weeks after the abortion."
+      waiting_period_or_counseling = "Waiting Period or Counseling: YES; in-person counseling at least three days prior to abortion procedure and follow-up appointment for medication abortion patients 1-2 weeks after the abortion.",
+      source = "Source: https://www.plannedparenthood.org/planned-parenthood-south-atlantic/patients/health-care-services/abortion-services/nc-abortion-faqs"
     ),
     "West Virginia" = list(
       text = "Abortion is illegal; you may be able to get an abortion in other states."
     ),
     "Washington DC" = list(
-      gestational_limit = "Gestational Limit: Legal throughout pregnancy.\n",
+      gestational_limit = "Gestational Limit: Abortion legal throughout pregnancy.\n",
       parental_consent = "Parental Consent Required for Minors: NO\n",
       waiting_period_or_counseling = "Waiting Period or Counseling Required: NO"
     )
