@@ -140,6 +140,67 @@ create_state_law_info <- function(state) {
   )
 }
 
+# create abortion funds object
+abortion_funds <- list(
+  "Washington DC" = list(
+    list(
+      name = "DC Abortion Fund",
+      website = "https://dcabortion.fund",
+      phone = "202-452-7464",
+      description = "Serves DC, Maryland, and Virginia. Offers financial assistance and case management support.",
+      languages = "English, Spanish",
+      hours = "Helpline hours: Monday-Friday 9am-5pm"
+    )
+  ),
+  "Maryland" = list(
+    list(
+      name = "Baltimore Abortion Fund",
+      website = "https://www.baltimoreabortionfund.org",
+      phone = "443-297-9893",
+      description = "Serves Maryland residents and those traveling to Maryland for care.",
+      languages = "English, Spanish",
+      hours = "Call or text helpline available 24/7"
+    ),
+    list(
+      name = "Maryland Abortion Access Fund",
+      website = "https://www.marylandabortionaccessfund.org",
+      phone = "443-297-9893",
+      description = "Provides financial assistance to Maryland residents seeking abortion care.",
+      languages = "English",
+      hours = "Online form available 24/7"
+    )
+  ),
+  "Virginia" = list(
+    list(
+      name = "Richmond Reproductive Freedom Project",
+      website = "https://www.rrfp.net",
+      phone = "888-883-7526",
+      description = "Serves Virginia residents and those traveling to Virginia for care.",
+      languages = "English, Spanish",
+      hours = "24/7 helpline"
+    ),
+    list(
+      name = "Blue Ridge Abortion Fund",
+      website = "https://www.blueridgeabortionfund.org",
+      phone = "434-963-0669",
+      description = "Serves Western Virginia and surrounding areas.",
+      languages = "English",
+      hours = "Monday-Friday 9am-5pm"
+    )
+  ),
+  "North Carolina" = list(
+    list(
+      name = "Carolina Abortion Fund",
+      website = "https://www.carolinaabortionfund.org",
+      phone = "855-518-4603",
+      description = "Serves North Carolina residents and those traveling to NC for care.",
+      languages = "English, Spanish",
+      hours = "Helpline hours: Monday-Friday 9am-5pm"
+    )
+  )
+)
+
+
 # Location R6 Class
 Location <- R6Class("Location",
   public = list(
@@ -172,6 +233,7 @@ Location <- R6Class("Location",
   )
 )
 # UI
+# UI
 ui <- fluidPage(
   useShinyjs(),
   tags$head(
@@ -186,17 +248,61 @@ ui <- fluidPage(
         z-index: 1000;
         display: none;
       }
+      .fund-card {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: #fff;
+      }
+      .fund-card h4 {
+        color: #2c3e50;
+        margin-top: 0;
+      }
+      .fund-card .contact-info {
+        margin: 10px 0;
+        padding: 5px 0;
+        border-top: 1px solid #eee;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .main-title {
+      font-family: 'Futura';
+      letter-spacing: 1px;
+      font-weight: bold;
+      }
+      /* lilac background */
+    .tab-content {
+      background-color: #E8E6F3;
+      padding: 20px;
+      border-radius: 0 0 4px 4px;
+    }
+    .tab-pane {
+      background-color: #E8E6F3;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .well, .alert, .card {
+      background-color: white;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    /* Style the sidebar */
+    .well {
+      background-color: white;
+    }
     "))
   ),
-  titlePanel("Clinic Finder"),
+  titlePanel(div(class = "main-title", "Abortion Clinic Finder")),
   
-  # Add tabsetPanel as the main container
   tabsetPanel(
-    # First tab - original content
+    # First tab - Find Nearest Clinic
     tabPanel("Find Nearest Clinic",
       sidebarLayout(
         sidebarPanel(
-          h4("Enter your location and preferences:"),
+          h4("Enter your location and gestational age:"),
           textInput("address", "Street Address", ""),
           textInput("city", "City", ""),
           selectInput("state", 
@@ -229,7 +335,7 @@ ui <- fluidPage(
       )
     ),
     
-    # New tab - you can customize this
+    # Second tab - State Laws
     tabPanel("State Laws",
       fluidRow(
         column(12,
@@ -246,10 +352,51 @@ ui <- fluidPage(
           uiOutput("stateLawInfo")
         )
       )
+    ),
+    
+    # Third tab - Abortion Funds
+    tabPanel("Abortion Funds",
+      fluidRow(
+        column(12,
+          h3("Financial Assistance Resources"),
+          p("Select your state to see available abortion funds and financial assistance programs:"),
+          selectInput("fundState", 
+                     "Select State", 
+                     choices = c("Select a state" = "",
+                                "District of Columbia" = "Washington DC",
+                                "Maryland",
+                                "North Carolina",
+                                "Virginia",
+                                "West Virginia"),
+                     selected = ""),
+          uiOutput("fundInfo"),
+          hr(),
+          div(
+            h4("National Resources"),
+            div(class = "fund-card",
+              h4("National Abortion Federation Hotline"),
+              p("Provides referrals to quality providers and financial assistance."),
+              div(class = "contact-info",
+                p(icon("phone"), " 1-800-772-9100"),
+                p(icon("globe"), " ", a("www.prochoice.org", href = "https://prochoice.org", target = "_blank")),
+                p(icon("clock"), " Monday-Friday: 8am-7pm ET, Saturday-Sunday: 8am-4pm ET")
+              )
+            ),
+            div(class = "fund-card",
+              h4("Indigenous Women Rising"),
+              p("Abortion and Midwifery Fund for Indigenous communities."),
+              div(class = "contact-info",
+                p(icon("phone"), " 505-398-1990"),
+                p(icon("globe"), " ", a("www.iwrising.org", href = "https://www.iwrising.org", target = "_blank")),
+                p(icon("clock"), " Available 24/7")
+              )
+            )
+          )
+        )
+      )
     )
   )
 )
-
 
 # Server
 server <- function(input, output, session) {
@@ -295,10 +442,23 @@ server <- function(input, output, session) {
   }
   
   # Handle Find button click
-  observeEvent(input$find, {
+  # Handle Find button click
+observeEvent(input$find, {
     req(input$address)
     
     tryCatch({
+      # First, completely reset the map
+      output$map <- renderGoogle_map({
+        google_map(key = api_key)
+      })
+      
+      # Reset all reactive values
+      rv$clinics <- NULL
+      rv$route_results <- NULL
+      rv$selected_clinic <- NULL
+      rv$initial_map_data <- NULL
+      rv$user_location <- NULL
+      
       # Show the legend and instructions
       shinyjs::show("legend")
       shinyjs::show("instructions")
@@ -344,13 +504,12 @@ server <- function(input, output, session) {
           }
         }),
         Address = map_chr(sorted_clinics, "address"),
-        Distance = map_chr(sorted_distances, ~ as.character(round(.x, 1))),
+        Distance = map_chr(sorted_distances, ~ paste(round(.x, 1), "miles")),
         Phone = map_chr(sorted_clinics, "phone"),
         MaxGA = map_chr(sorted_clinics, ~ as.character(.x$max_GAw)),
         Directions = paste0(
           '<a href="#" onclick="Shiny.setInputValue(\'select_clinic\', \'',
           map_chr(sorted_clinics, function(clinic) {
-            # Use exact same name as stored in clinic object
             clinic$name
           }), 
           '\'); return false;">Click for directions</a>'
@@ -376,18 +535,25 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
       
-      # Draw initial map with markers
-      output$map <- renderGoogle_map({
-        google_map(key = api_key) %>%
-          add_markers(
-            data = rv$initial_map_data,
-            lat = "Latitude", 
-            lon = "Longitude",
-            colour = "colour",
-            title = "Name",
-            info_window = "Name",
-            id = "Name"
-          )
+      # Create a fresh map centered on the search location
+      isolate({
+        output$map <- renderGoogle_map({
+          google_map(key = api_key, location = c(loc$lat, loc$lng), zoom = 10) %>%
+            add_markers(
+              data = rv$initial_map_data,
+              lat = "Latitude", 
+              lon = "Longitude",
+              colour = "colour",
+              title = "Name",
+              info_window = "Name",
+              id = "Name"
+            )
+        })
+      })
+      
+      # Clear route details
+      output$routeDetailsText <- renderUI({
+        return(NULL)
       })
       
     }, error = function(e) {
@@ -396,7 +562,7 @@ server <- function(input, output, session) {
         type = "error"
       )
     })
-  })
+})
   
   # Handle marker clicks
   observeEvent(input$google_map_marker_click, {
@@ -444,52 +610,57 @@ server <- function(input, output, session) {
           id = "Name"
         )
       
-      # Add routes with error checking
-      tryCatch({
-        if (!is.null(rv$route_results$driving)) {
-          coords <- decode_pl(rv$route_results$driving$polyline)
-          if (nrow(coords) > 0) {
-            google_map_update(map_id = "map") %>%
-              add_polylines(
-                data = coords,
-                lat = "lat",
-                lon = "lon",
-                stroke_colour = "#FF0000",
-                stroke_weight = 3
-              )
-          }
-        }
-        
-        if (!is.null(rv$route_results$walking)) {
-          coords <- decode_pl(rv$route_results$walking$polyline)
-          if (nrow(coords) > 0) {
-            google_map_update(map_id = "map") %>%
-              add_polylines(
-                data = coords,
-                lat = "lat",
-                lon = "lon",
-                stroke_colour = "#00FF00",
-                stroke_weight = 3
-              )
-          }
-        }
-        
-        if (!is.null(rv$route_results$transit)) {
-          coords <- decode_pl(rv$route_results$transit$polyline)
-          if (nrow(coords) > 0) {
-            google_map_update(map_id = "map") %>%
-              add_polylines(
-                data = coords,
-                lat = "lat",
-                lon = "lon",
-                stroke_colour = "#0000FF",
-                stroke_weight = 3
-              )
-          }
-        }
-      }, error = function(e) {
-        print(paste("Error drawing routes:", e$message))
-      })
+# Clear existing routes first
+google_map_update(map_id = "map") %>%
+  clear_polylines()
+
+# Add new routes
+isolate({
+  if (!is.null(rv$route_results$driving)) {
+    coords <- decode_pl(rv$route_results$driving$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 1),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#FF0000",
+          stroke_weight = 3
+        )
+    }
+  }
+  
+  if (!is.null(rv$route_results$walking)) {
+    coords <- decode_pl(rv$route_results$walking$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 2),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#00FF00",
+          stroke_weight = 3
+        )
+    }
+  }
+  
+  if (!is.null(rv$route_results$transit)) {
+    coords <- decode_pl(rv$route_results$transit$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 3),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#0000FF",
+          stroke_weight = 3
+        )
+    }
+  }
+})
       
       # Update route details
       update_route_details(clicked_clinic$name, rv$route_results)
@@ -539,52 +710,57 @@ server <- function(input, output, session) {
         id = "Name"
       )
     
-    # Add routes with error checking
-    tryCatch({
-      if (!is.null(rv$route_results$driving)) {
-        coords <- decode_pl(rv$route_results$driving$polyline)
-        if (nrow(coords) > 0) {
-          google_map_update(map_id = "map") %>%
-            add_polylines(
-              data = coords,
-              lat = "lat",
-              lon = "lon",
-              stroke_colour = "#FF0000",
-              stroke_weight = 3
-            )
-        }
-      }
-      
-      if (!is.null(rv$route_results$walking)) {
-        coords <- decode_pl(rv$route_results$walking$polyline)
-        if (nrow(coords) > 0) {
-          google_map_update(map_id = "map") %>%
-            add_polylines(
-              data = coords,
-              lat = "lat",
-              lon = "lon",
-              stroke_colour = "#00FF00",
-              stroke_weight = 3
-            )
-        }
-      }
-      
-      if (!is.null(rv$route_results$transit)) {
-        coords <- decode_pl(rv$route_results$transit$polyline)
-        if (nrow(coords) > 0) {
-          google_map_update(map_id = "map") %>%
-            add_polylines(
-              data = coords,
-              lat = "lat",
-              lon = "lon",
-              stroke_colour = "#0000FF",
-              stroke_weight = 3
-            )
-        }
-      }
-    }, error = function(e) {
-      print(paste("Error drawing routes:", e$message))
-    })
+   # Clear existing routes first
+google_map_update(map_id = "map") %>%
+  clear_polylines()
+
+# Add new routes
+isolate({
+  if (!is.null(rv$route_results$driving)) {
+    coords <- decode_pl(rv$route_results$driving$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 1),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#FF0000",
+          stroke_weight = 3
+        )
+    }
+  }
+  
+  if (!is.null(rv$route_results$walking)) {
+    coords <- decode_pl(rv$route_results$walking$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 2),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#00FF00",
+          stroke_weight = 3
+        )
+    }
+  }
+  
+  if (!is.null(rv$route_results$transit)) {
+    coords <- decode_pl(rv$route_results$transit$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 3),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#0000FF",
+          stroke_weight = 3
+        )
+    }
+  }
+})
     
     # Update route details
     update_route_details(selected_clinic$name, rv$route_results)
@@ -636,53 +812,57 @@ server <- function(input, output, session) {
           id = "Name"
         )
       
-      # Add routes with error checking
-      tryCatch({
-        if (!is.null(rv$route_results$driving)) {
-          coords <- decode_pl(rv$route_results$driving$polyline)
-          if (nrow(coords) > 0) {
-            google_map_update(map_id = "map") %>%
-              add_polylines(
-                data = coords,
-                lat = "lat",
-                lon = "lon",
-                stroke_colour = "#FF0000",
-                stroke_weight = 3
-              )
-          }
-        }
-        
-        if (!is.null(rv$route_results$walking)) {
-          coords <- decode_pl(rv$route_results$walking$polyline)
-          if (nrow(coords) > 0) {
-            google_map_update(map_id = "map") %>%
-              add_polylines(
-                data = coords,
-                lat = "lat",
-                lon = "lon",
-                stroke_colour = "#00FF00",
-                stroke_weight = 3
-              )
-          }
-        }
-        
-        if (!is.null(rv$route_results$transit)) {
-          coords <- decode_pl(rv$route_results$transit$polyline)
-          if (nrow(coords) > 0) {
-            google_map_update(map_id = "map") %>%
-              add_polylines(
-                data = coords,
-                lat = "lat",
-                lon = "lon",
-                stroke_colour = "#0000FF",
-                stroke_weight = 3
-              )
-          }
-        }
-      }, error = function(e) {
-        print(paste("Error drawing routes:", e$message))
-      })
-      
+      # Clear existing routes first
+google_map_update(map_id = "map") %>%
+  clear_polylines()
+
+# Add new routes
+isolate({
+  if (!is.null(rv$route_results$driving)) {
+    coords <- decode_pl(rv$route_results$driving$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 1),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#FF0000",
+          stroke_weight = 3
+        )
+    }
+  }
+  
+  if (!is.null(rv$route_results$walking)) {
+    coords <- decode_pl(rv$route_results$walking$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 2),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#00FF00",
+          stroke_weight = 3
+        )
+    }
+  }
+  
+  if (!is.null(rv$route_results$transit)) {
+    coords <- decode_pl(rv$route_results$transit$polyline)
+    if (nrow(coords) > 0) {
+      google_map_update(map_id = "map") %>%
+        add_polylines(
+          data = data.frame(coords, id = 3),
+          lat = "lat",
+          lon = "lon",
+          id = "id",
+          stroke_colour = "#0000FF",
+          stroke_weight = 3
+        )
+    }
+  }
+})
       # Update route details
       update_route_details(selected_clinic$name, rv$route_results)
       
@@ -724,10 +904,43 @@ server <- function(input, output, session) {
           paste0("<p>", selected_state_laws$exceptions, "</p>") else "",
         "<p>", selected_state_laws$parental_consent, "</p>",
         "<p>", selected_state_laws$waiting_period_or_counseling, "</p>",
+        "<p>", selected_state_laws$source, "</p>",
         "</div>"
       ))
     }
   })
+  output$fundInfo <- renderUI({
+    req(input$fundState)
+    
+    funds <- abortion_funds[[input$fundState]]
+    
+    if (is.null(funds)) {
+        return(
+            div(class = "alert alert-info",
+                "No local abortion funds found for this state. Please see the national resources below or contact funds in neighboring states."
+            )
+        )
+    }
+    
+    # Create HTML content for each fund
+    fund_cards <- lapply(funds, function(fund) {
+        div(class = "fund-card",
+            h4(fund$name),
+            p(fund$description),
+            div(class = "contact-info",
+                if (!is.null(fund$phone)) p(icon("phone"), " ", fund$phone),
+                if (!is.null(fund$website)) p(icon("globe"), " ", 
+                    a(fund$website, href = fund$website, target = "_blank")),
+                if (!is.null(fund$hours)) p(icon("clock"), " ", fund$hours),
+                if (!is.null(fund$languages)) p(icon("language"), 
+                    " Available languages: ", fund$languages)
+            )
+        )
+    })
+    
+    # Return all fund cards wrapped in a div
+    do.call(tagList, fund_cards)
+})
 }
 
 # Run the application 
