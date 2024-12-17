@@ -471,7 +471,7 @@ ui <- fluidPage(
 # Server
 server <- function(input, output, session) {
   # Initialize API key
-  Sys.setenv(GOOGLE_API="AIzaSyDxykvMTC74S71DCnLEZeqqf4ceU2k1Hwo")
+  Sys.setenv(GOOGLE_API="ENTER API KEY")
   api_key <- Sys.getenv("GOOGLE_API")
   
   
