@@ -6,3 +6,4 @@ Final Version of the annotated code for the dashboard can be found in the GitHub
 
 Dashboard site: https://kokohall.shinyapps.io/AbortionFinder/
  
+The write up for the dashboard project can be found in the GitHub Repository: Statistical Programming 4_ Write Up.pdf
